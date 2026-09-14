@@ -1,0 +1,86 @@
+{
+  "id": "22222222-aaaa-4bbb-8ccc-000000000001",
+  "version": 1,
+  "is_active": true,
+  "is_template": true,
+  "name": "News Curator",
+  "description": "Daily AI news briefing: reads RSS feeds, drops already-seen articles (dedup by content hash, before any LLM call), summarizes the new ones with a 3-agent AutoGen team on the Gemini free tier, and stores the briefing for /api/briefings. Set your Gemini api_key on the AutoGen Bridge node after importing.",
+  "nodes": [
+    {
+      "id": "11111111-aaaa-4bbb-8ccc-000000000001",
+      "block_id": "5ebe6768-8e5d-41e3-9134-1c7bd89a8d52",
+      "input_default": {
+        "rss_url": "https://feeds.arstechnica.com/arstechnica/index",
+        "time_period": 1440,
+        "polling_rate": 300,
+        "run_continuously": false
+      },
+      "metadata": { "position": { "x": 0, "y": 0 } }
+    },
+    {
+      "id": "11111111-aaaa-4bbb-8ccc-000000000002",
+      "block_id": "c3a1f2b3-1111-4e2a-9c1d-000000000001",
+      "input_default": {
+        "dedup_key": "news_seen_hashes",
+        "max_hashes": 5000
+      },
+      "metadata": { "position": { "x": 320, "y": 0 } }
+    },
+    {
+      "id": "11111111-aaaa-4bbb-8ccc-000000000003",
+      "block_id": "8f2c1a54-9d7e-4b6a-a3f2-1c5e8b7d9a40",
+      "input_default": {
+        "task": "Summarize today's news for me. Rank the articles by relevance and write a clear 2-paragraph summary for each. Keep each summary under 120 words.",
+        "team_profile": "news",
+        "api_key": "",
+        "model": "gemini-2.5-flash",
+        "max_messages": 12,
+        "retries": 3
+      },
+      "metadata": { "position": { "x": 640, "y": 0 } }
+    },
+    {
+      "id": "11111111-aaaa-4bbb-8ccc-000000000004",
+      "block_id": "c3a1f2b3-1111-4e2a-9c1d-000000000002",
+      "input_default": {
+        "title": "Daily News Briefing",
+        "history_cap": 30
+      },
+      "metadata": { "position": { "x": 960, "y": 0 } }
+    }
+  ],
+  "links": [
+    {
+      "id": "33333333-aaaa-4bbb-8ccc-000000000101",
+      "source_id": "11111111-aaaa-4bbb-8ccc-000000000001",
+      "sink_id": "11111111-aaaa-4bbb-8ccc-000000000002",
+      "source_name": "entries",
+      "sink_name": "entries",
+      "is_static": false
+    },
+    {
+      "id": "33333333-aaaa-4bbb-8ccc-000000000102",
+      "source_id": "11111111-aaaa-4bbb-8ccc-000000000002",
+      "sink_id": "11111111-aaaa-4bbb-8ccc-000000000003",
+      "source_name": "formatted_context",
+      "sink_name": "context",
+      "is_static": false
+    },
+    {
+      "id": "33333333-aaaa-4bbb-8ccc-000000000103",
+      "source_id": "11111111-aaaa-4bbb-8ccc-000000000003",
+      "sink_id": "11111111-aaaa-4bbb-8ccc-000000000004",
+      "source_name": "result",
+      "sink_name": "briefing",
+      "is_static": false
+    },
+    {
+      "id": "33333333-aaaa-4bbb-8ccc-000000000104",
+      "source_id": "11111111-aaaa-4bbb-8ccc-000000000002",
+      "sink_id": "11111111-aaaa-4bbb-8ccc-000000000004",
+      "source_name": "new_count",
+      "sink_name": "article_count",
+      "is_static": false
+    }
+  ]
+}

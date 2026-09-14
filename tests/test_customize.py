@@ -9,13 +9,34 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "deploy"))
 
 import customize  # noqa: E402
 
+# rest_api.py skeleton with the exact patch-point markers customize.py looks for.
+REST_API_SKELETON = """\
+import fastapi
+
+from .features.analytics import router as analytics_router
+from .features.integrations.router import router as integrations_router
+
+app = fastapi.FastAPI()
+
+app.include_router(backend.api.features.v1.v1_router, tags=["v1"], prefix="/api")
+app.include_router(
+    integrations_router,
+)
+"""
+
 
 @pytest.fixture
 def fake_repo(tmp_path: Path) -> Path:
     """Minimal AutoGPT checkout skeleton with the paths customize.py touches."""
-    blocks = tmp_path / "autogpt_platform" / "backend" / "backend" / "blocks"
+    backend = tmp_path / "autogpt_platform" / "backend" / "backend"
+    blocks = backend / "blocks"
+    api_features = backend / "api" / "features"
     blocks.mkdir(parents=True)
+    api_features.mkdir(parents=True)
     (blocks / "_base.py").write_text("# platform base\n")
+    (api_features / "__init__.py").write_text("")
+
+    (backend / "api" / "rest_api.py").write_text(REST_API_SKELETON)
 
     pyproject = tmp_path / "autogpt_platform" / "backend" / "pyproject.toml"
     pyproject.write_text(
@@ -41,18 +62,39 @@ def test_customize_applies_overlay(fake_repo, capsys):
     blocks = fake_repo / "autogpt_platform" / "backend" / "backend" / "blocks"
     assert (blocks / "autogen_team.py").is_file()
     assert (blocks / "autogen_bridge_block.py").is_file()
+    assert (blocks / "news_dedup_block.py").is_file()
+    assert (blocks / "briefing_store_block.py").is_file()
+    assert (blocks / "_briefing_store.py").is_file()
+    assert (blocks / "_block_shim.py").is_file()
+
+    briefings = (
+        fake_repo
+        / "autogpt_platform"
+        / "backend"
+        / "backend"
+        / "api"
+        / "features"
+        / "briefings"
+    )
+    assert (briefings / "__init__.py").is_file()
+    assert (briefings / "routes.py").is_file()
+
+    rest_api = (
+        fake_repo / "autogpt_platform" / "backend" / "backend" / "api" / "rest_api.py"
+    ).read_text()
+    assert "from backend.api.features.briefings.routes import router as briefings_router" in rest_api
+    assert 'app.include_router(briefings_router, tags=["agentcloud"], prefix="/api/briefings")' in rest_api
+    assert rest_api.count("briefings_router") == 2
 
     pyproject = (
         fake_repo / "autogpt_platform" / "backend" / "pyproject.toml"
     ).read_text()
     assert 'autogen-agentchat = "0.4.7"' in pyproject
     assert 'autogen-ext = { extras = ["openai"], version = "^0.4.7" }' in pyproject
-    # inserted inside the dependencies section, before other deps
     assert pyproject.index("autogen-agentchat") < pyproject.index("feedparser")
 
     env = (fake_repo / "autogpt_platform" / ".env").read_text()
     assert "GRAPHITI_FALKORDB_PASSWORD=" in env
-    # the empty default was replaced with a generated secret
     password_line = [l for l in env.splitlines() if l.startswith("GRAPHITI_")][0]
     assert len(password_line.split("=", 1)[1]) > 20
 
@@ -61,6 +103,10 @@ def test_customize_is_idempotent(fake_repo):
     customize.main(["--repo", str(fake_repo)])
     pyproject_path = fake_repo / "autogpt_platform" / "backend" / "pyproject.toml"
     before = pyproject_path.read_text()
+    rest_api_path = (
+        fake_repo / "autogpt_platform" / "backend" / "backend" / "api" / "rest_api.py"
+    )
+    rest_before = rest_api_path.read_text()
     env_path = fake_repo / "autogpt_platform" / ".env"
     env_before = env_path.read_text()
 
@@ -68,7 +114,10 @@ def test_customize_is_idempotent(fake_repo):
     assert changed is False
     assert pyproject_path.read_text() == before
 
-    # .env is kept unless --force-env
+    mounted = customize.patch_rest_api(fake_repo)
+    assert mounted is False
+    assert rest_api_path.read_text() == rest_before
+
     created = customize.write_env(fake_repo)
     assert created is False
     assert env_path.read_text() == env_before
