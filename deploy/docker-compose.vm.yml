@@ -1,0 +1,42 @@
+# Memory-sized override for the AutoGPT Platform on a 12 GB free-tier VM.
+#
+# Usage (from inside the AutoGPT checkout, after deploy/customize.py):
+#   docker compose \
+#     -f autogpt_platform/docker-compose.platform.yml \
+#     -f /path/to/android-ai-agents/deploy/docker-compose.vm.yml \
+#     --env-file autogpt_platform/.env \
+#     up -d --build
+#
+# Budget (~9.3 GB of 12 GB, leaving headroom for the OS and Docker daemon).
+
+services:
+  frontend:
+    mem_limit: 1g
+  rest_server:
+    mem_limit: 1500m
+  websocket_server:
+    mem_limit: 750m
+  executor:
+    mem_limit: 1500m
+  copilot_executor:
+    mem_limit: 750m
+  scheduler_server:
+    mem_limit: 512m
+  notification_server:
+    mem_limit: 512m
+  database_manager:
+    mem_limit: 1g
+  migrate:
+    mem_limit: 512m
+  platform_linking_manager:
+    mem_limit: 512m
+  rabbitmq:
+    mem_limit: 512m
+  falkordb:
+    mem_limit: 512m
+  redis-0:
+    mem_limit: 256m
+  redis-1:
+    mem_limit: 256m
+  redis-2:
+    mem_limit: 256m
