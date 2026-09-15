@@ -6,6 +6,7 @@
 
   // ---- State ----
   let baseUrl = localStorage.getItem("agentcloud_base_url") || "";
+  let apiToken = localStorage.getItem("agentcloud_token") || "";
   let deferredInstall = null;
 
   // ---- DOM refs ----
@@ -15,6 +16,7 @@
   const historyEl = $("#history-list");
   const refreshBtn = $("#refresh-btn");
   const serverUrlInput = $("#server-url");
+  const apiTokenInput = $("#api-token");
   const saveUrlBtn = $("#save-url");
   const pushBtn = $("#push-sub-btn");
   const pushStatus = $("#push-status");
@@ -34,10 +36,13 @@
 
   // ---- API ----
   async function apiGet(path) {
-    if (!baseUrl) throw new Error("Server URL not set. Open Settings to configure.");
-    const res = await fetch(baseUrl.replace(/\/$/, "") + path, {
+    // Empty baseUrl = same-origin (the PWA is served by the server itself).
+    const res = await fetch((baseUrl ? baseUrl.replace(/\/$/, "") : "") + path, {
       credentials: "include",
-      headers: { Accept: "application/json" },
+      headers: Object.assign(
+        { Accept: "application/json" },
+        apiToken ? { Authorization: "Bearer " + apiToken } : {}
+      ),
     });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error("HTTP " + res.status + ": " + (await res.text()));
@@ -114,6 +119,7 @@
 
   // ---- Settings: server URL ----
   serverUrlInput.value = baseUrl;
+  apiTokenInput.value = apiToken;
   saveUrlBtn.addEventListener("click", function () {
     var url = serverUrlInput.value.trim();
     if (url && !url.startsWith("http")) {
@@ -121,10 +127,12 @@
       serverUrlInput.value = url;
     }
     baseUrl = url.replace(/\/$/, "");
+    apiToken = apiTokenInput.value.trim();
     localStorage.setItem("agentcloud_base_url", baseUrl);
+    localStorage.setItem("agentcloud_token", apiToken);
     saveUrlBtn.textContent = "Saved!";
     setTimeout(function () { saveUrlBtn.textContent = "Save"; }, 1500);
-    if (baseUrl) loadLatest();
+    if (baseUrl || apiToken) loadLatest();
   });
 
   // ---- Push notifications ----
@@ -160,6 +168,7 @@
       // Get VAPID public key from the platform
       var keyRes = await fetch(baseUrl.replace(/\/$/, "") + "/api/push/vapid-key", {
         credentials: "include",
+        headers: apiToken ? { Authorization: "Bearer " + apiToken } : {},
       });
       if (!keyRes.ok) throw new Error("Could not fetch VAPID key");
       var keyData = await keyRes.json();
@@ -174,7 +183,10 @@
       await fetch(baseUrl.replace(/\/$/, "") + "/api/push/subscribe", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: Object.assign(
+          { "Content-Type": "application/json" },
+          apiToken ? { Authorization: "Bearer " + apiToken } : {}
+        ),
         body: JSON.stringify({
           endpoint: subscription.endpoint,
           keys: {
@@ -258,6 +270,6 @@
   }
 
   // ---- Init ----
-  if (baseUrl) loadLatest();
+  if (baseUrl || apiToken) loadLatest();
   else briefingEl.innerHTML = '<div class="loading">Open ⚙ Settings to set your server URL.</div>';
 })();
