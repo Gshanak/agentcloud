@@ -1,135 +1,192 @@
 # agentcloud — Your Setup Checklist
 
-Everything here is something **only you can do** — accounts to create, keys
-to obtain, and one-time decisions. Everything else is already in this repo
-(`deploy/vm-setup.sh` and `deploy/customize.py` automate the rest).
+Two ways to run it. **If you don't have a credit card, use Path A** — it
+needs nothing but free accounts (Hugging Face, Google). Path B (Oracle VM)
+runs the full AutoGPT platform but requires a card for verification.
+
+Everything else is already in this repo.
 
 ---
 
-## 1. Accounts to create (one-time)
+# Path A — No card needed (Hugging Face Spaces)
+
+**Total new accounts: 1 (Hugging Face). Total cost: ₹0. Card: never asked for.**
+
+## A1. Create the accounts (one-time, ~10 minutes)
+
+| Account | URL | Needed for |
+|---|---|---|
+| Hugging Face | https://huggingface.co/join | Hosting the server + storing your data (both free) |
+| Google AI Studio | https://aistudio.google.com/ | Your Gemini API key (the AI brain) |
+
+## A2. Get your Gemini API key
+
+1. Go to https://aistudio.google.com/apikey → **Create API key** → copy it
+   (starts with `AIza...`).
+2. Free tier: ~1,500 requests/day with Gemini Flash — more than enough.
+
+## A3. Create the Space (the server)
+
+In huggingface.co: **Spaces → Create new Space**:
+
+| Setting | Value |
+|---|---|
+| Space name | `agentcloud` |
+| SDK | **Docker** → Blank template |
+| Visibility | Private (recommended) or Public |
+
+## A4. Create the state repo (your database)
+
+**Datasets → New dataset**: name `agentcloud-state`, **Private**.
+This is where your briefings/stories/subscriptions are stored so they
+survive the Space restarting.
+
+## A5. Create a write token
+
+https://huggingface.co/settings/tokens → **New token** → type **Write** →
+copy it (starts with `hf_...`).
+
+## A6. Set the Space secrets
+
+In the Space: **Settings → Variables and secrets → New secret** (4 of them):
+
+| Secret | Value |
+|---|---|
+| `GEMINI_API_KEY` | your `AIza...` key |
+| `AUTH_TOKEN` | any long random string you invent — this becomes the apps' "Access Token" |
+| `HF_TOKEN` | your `hf_...` write token |
+| `STATE_REPO` | `your-username/agentcloud-state` |
+
+## A7. Push the code to the Space
+
+On your computer (git + this repo):
+
+```bash
+git clone https://github.com/Gshanak/agentcloud.git
+cd agentcloud
+HF_USERNAME=your-hf-username HF_TOKEN=hf_your-token bash deploy/push_to_space.sh
+```
+
+Hugging Face builds the image for a few minutes, then your apps are live:
+
+| App | URL |
+|---|---|
+| News Curator | `https://your-username-agentcloud.hf.space/news/` |
+| Storyteller | `https://your-username-agentcloud.hf.space/stories/` |
+| Health check | `https://your-username-agentcloud.hf.space/api/health` |
+
+The first build also runs the news job once if no briefing exists yet, so
+you have content within a couple of minutes of the first start.
+
+## A8. Keep the Space awake (important)
+
+Free Spaces sleep after ~48h idle — and a sleeping Space can't run the 07:00
+IST briefing. Fix it with a free pinger (no card):
+
+1. https://cron-job.org (free account) → **Create cronjob**
+2. URL: `https://your-username-agentcloud.hf.space/api/health`
+3. Schedule: every 30 minutes → Create.
+
+## A9. Install the apps on your phone
+
+1. Chrome on Android → open the two URLs above.
+2. ⚙ Settings → **Access Token**: paste your `AUTH_TOKEN` → Save.
+   (Leave Server URL empty — the apps are served by the same server.)
+3. Chrome menu → **Install app** for both.
+4. News Curator → Settings → Enable Notifications (push is built in; the
+   VAPID keys were generated automatically on first boot).
+5. Storyteller narration: if a language voice is missing — Settings →
+   Accessibility → Text-to-speech → Google TTS → Install voice data.
+
+## A10. Daily usage
+
+Nothing. The briefing is generated at 07:00 IST and pushed to your phone;
+stories are on demand in the Storyteller app. Recurring cost: ₹0.
+
+---
+
+# Path B — Oracle Cloud VM (full AutoGPT platform; card needed)
+
+Everything below needs an Oracle account, which requires a credit card
+for verification (never charged on Always Free).
+
+## B1. Accounts
 
 | Account | URL | Cost | Needed for |
 |---|---|---|---|
-| Oracle Cloud | https://www.oracle.com/cloud/free/ | Free (credit card required for verification, not charged) | The VM that runs everything |
-| Google AI Studio | https://aistudio.google.com/ | Free | Gemini API key (the AI brain) |
-| Cloudflare | https://dash.cloudflare.com/sign-up | Free | HTTPS tunnel (no domain needed) |
+| Oracle Cloud | https://www.oracle.com/cloud/free/ | Free (card for verification) | The VM |
+| Google AI Studio | https://aistudio.google.com/ | Free | Gemini API key |
+| Cloudflare | https://dash.cloudflare.com/sign-up | Free | HTTPS tunnel |
 
-## 2. Get your Gemini API key
+## B2. Gemini API key
 
-1. Go to https://aistudio.google.com/apikey
-2. Click **Create API key** → pick the default project
-3. Copy the key (starts with `AIza...`)
-4. Free tier: ~1,500 requests/day with Gemini Flash models — more than
-   enough for daily briefings + a few stories per day.
+https://aistudio.google.com/apikey → **Create API key** → copy (`AIza...`).
 
-## 3. Create the Oracle VM
+## B3. Create the Oracle VM
 
-In the Oracle Cloud console: **Compute → Create Instance**. Use these
-exact settings:
+**Compute → Create Instance**:
 
 | Setting | Value |
 |---|---|
 | Name | `agentcloud` |
-| Image | Canonical **Ubuntu 22.04** (click "Edit" next to Image and switch from Oracle Linux) |
-| Shape | **VM.Standard.A1.Flex** (Ampere ARM) — 2 OCPUs, **12 GB** memory |
-| Networking | New VCN + public subnet; **make sure "Assign a public IPv4 address" is checked** |
-| SSH keys | Generate a key pair in the browser and **download both files** (you need them to log in) |
+| Image | Canonical **Ubuntu 22.04** (switch from Oracle Linux) |
+| Shape | **VM.Standard.A1.Flex** (Ampere ARM) — 2 OCPUs, **12 GB** |
+| Networking | New VCN + public subnet; **assign a public IPv4** |
+| SSH keys | Generate in browser, **download both files** |
 
-After clicking Create: if you see **"Out of host capacity"**, retry — free
-ARM capacity in some regions (especially India) frees up periodically.
-Retrying at off-peak hours usually succeeds within a few attempts.
+"Out of host capacity" → retry; free ARM capacity frees up periodically.
 
-When the VM is running, note its **public IP**.
+## B4. Open ports in the security list
 
-## 4. Open these ports in the security list
+Instance → subnet → **Security Lists** → ingress rules (source `0.0.0.0/0`):
+TCP **3000** (close later), **8080**, **8081**.
 
-In the console: your instance → subnet → **Security Lists** → Add Ingress
-Rules for (Source `0.0.0.0/0`):
-
-- TCP **3000** (AutoGPT web UI — close this after Cloudflare Tunnel works)
-- TCP **8080** (News Curator PWA)
-- TCP **8081** (Storyteller PWA)
-
-## 5. Run the setup script on the VM
-
-From your own computer:
+## B5. Run the setup script
 
 ```bash
-ssh -i <your-key-file> ubuntu@<VM_PUBLIC_IP>
-```
-
-Then on the VM (copy-paste):
-
-```bash
+ssh -i <your-key> ubuntu@<VM_PUBLIC_IP>
 sudo apt update && sudo apt install -y git
 git clone https://github.com/Gshanak/agentcloud.git
 sudo bash agentcloud/deploy/vm-setup.sh
 ```
 
-Wait 15-30 minutes (Docker image builds). This does everything: installs
-Docker, clones AutoGPT, applies the overlay, sizes memory limits, starts
-all services.
+15–30 minutes. Installs Docker, clones AutoGPT, applies the overlay, sizes
+memory, starts everything.
 
-## 6. First-run platform setup (browser)
+## B6. First-run platform setup
 
-1. Open `http://<VM_PUBLIC_IP>:3000`
-2. **Create your admin account** (email + password of your choice)
-3. Close registration so nobody else can sign up: edit
-   `AutoGPT/autogpt_platform/.env`, set `AUTH_ALLOW_NEW_ACCOUNTS=false`,
-   then `docker compose -f autogpt_platform/docker-compose.platform.yml -f
-   ~/agentcloud/deploy/docker-compose.vm.yml --env-file
-   autogpt_platform/.env up -d rest_server` to apply.
+1. `http://<VM_PUBLIC_IP>:3000` → create your admin account.
+2. Close registration: `AUTH_ALLOW_NEW_ACCOUNTS=false` in
+   `AutoGPT/autogpt_platform/.env`, then restart `rest_server`.
 
-## 7. Fill in your Gemini key on the VM
+## B7. Gemini key on the VM
 
 ```bash
-nano ~/AutoGPT/autogpt_platform/.env
-# Find GEMINI_API_KEY= and paste your key after the =
-# Save with Ctrl+O, Enter, Ctrl+X
+nano ~/AutoGPT/autogpt_platform/.env    # GEMINI_API_KEY=...
 docker compose -f autogpt_platform/docker-compose.platform.yml \
   -f ~/agentcloud/deploy/docker-compose.vm.yml \
   --env-file autogpt_platform/.env up -d rest_server executor
 ```
 
-## 8. Set up Cloudflare Tunnel (free HTTPS)
-
-The PWAs need HTTPS for install + push. On the VM:
+## B8. Cloudflare Tunnel (free HTTPS)
 
 ```bash
-# Install cloudflared (already done by vm-setup.sh if you used it) then:
 cloudflared tunnel --url http://localhost:3000
 ```
 
-Copy the printed `https://xxx.trycloudflare.com` URL — that is your
-platform's public HTTPS address. Add routes for the PWAs too (ports 8080
-and 8081), or host the PWAs on Cloudflare Pages instead (see
-`apps/news-curator-pwa/DEPLOYMENT.md`).
+Copy the `https://xxx.trycloudflare.com` URL. For a permanent URL create a
+free named tunnel in the Cloudflare dashboard.
 
-Notes:
-- The free quick tunnel URL changes each time `cloudflared` restarts. For a
-  permanent URL, create a free named tunnel in the Cloudflare dashboard and
-  point it at `localhost:3000`.
-- Always access the platform over the HTTPS URL from your phone.
-
-## 9. (Optional) Push notifications for the News Curator
-
-Web push needs a VAPID key pair on the server:
+## B9. (Optional) VAPID keys for push
 
 ```bash
-# On the VM (or any machine with node installed):
 npx web-push generate-vapid-keys
 ```
 
-Put the printed public/private keys into
-`AutoGPT/autogpt_platform/.env` as `VAPID_PUBLIC_KEY=...` and
-`VAPID_PRIVATE_KEY=...` (check the exact variable names the platform
-expects in its .env.default), then restart `rest_server` and
-`notification_server`. In the News Curator PWA: Settings → Enable
-Notifications.
+Paste into `.env` per the platform's variable names, restart `rest_server`
+and `notification_server`.
 
-## 10. Import the graphs and schedule the news run
-
-In the AutoGPT web UI (Build → import, or run `deploy/schedule_news.py`):
+## B10. Import graphs + schedule
 
 ```bash
 cd ~/agentcloud
@@ -139,31 +196,27 @@ python3 deploy/schedule_news.py \
   --api-key <GEMINI_API_KEY>
 ```
 
-Or in the UI: Build → ⋯ → Import → pick `graphs/news_curator.json` (or
-`graphs/storyteller.json`), then on the **AutoGen Bridge** node paste your
-Gemini key into the `api_key` input, and create a schedule (01:30 UTC =
-07:00 IST) on the news graph.
+Or: UI → Build → ⋯ → Import → `graphs/news_curator.json` / `storyteller.json`,
+paste the Gemini key into the AutoGen Bridge node, add the 01:30 UTC schedule.
 
-## 11. Install the PWAs on your phone
+## B11. Install the PWAs
 
-1. Open `https://<your-pwa-url>` in Chrome on Android
-2. Settings → paste the platform URL → Save
-3. Chrome menu → **Install app** (or **Add to Home screen**)
-4. For Storyteller narration: if a language's voice is missing on your
-   phone, install it under Settings → Accessibility → Text-to-speech
-   output → Google TTS → Install voice data.
+Open `http://<vm-ip>:8080` / `:8081` in Chrome → Settings → paste the tunnel
+URL → Install app.
 
 ---
 
-## Daily usage
-
-Nothing. The news graph runs at 07:00 IST by itself; stories are generated
-on demand from the Storyteller PWA. Total recurring cost: ₹0.
-
 ## If something breaks
 
-- `docker compose ps` — see which service is down
+**Path A (Spaces):**
+- Space → Logs — build and runtime errors.
+- Space stuck sleeping → check your cron-job.org pinger is running.
+- 401 from the apps → the Access Token doesn't match the `AUTH_TOKEN` secret.
+- Data missing after restart → `HF_TOKEN`/`STATE_REPO` secrets unset or wrong
+  repo name; the state file lives in the `agentcloud-state` dataset repo.
+
+**Path B (VM):**
+- `docker compose ps` — which service is down
 - `docker compose logs rest_server --tail 50` — API errors
-- `docker compose logs executor --tail 50` — block/agent execution errors
-- Gemini 429 errors are normal on the free tier; the pipeline retries with
-  backoff automatically.
+- Gemini 429 errors are normal on the free tier; the pipeline retries
+  with backoff automatically.

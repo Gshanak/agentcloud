@@ -7,6 +7,7 @@
 
   // ---- State ----
   let baseUrl = localStorage.getItem("agentcloud_base_url") || "";
+  let apiToken = localStorage.getItem("agentcloud_token") || "";
   let currentStory = null;
   let pollTimer = null;
   let deferredInstall = null;
@@ -23,6 +24,7 @@
   const readerEl = $("#reader-content");
   const backBtn = $("#back-btn");
   const serverUrlInput = $("#server-url");
+  const apiTokenInput = $("#api-token");
   const saveUrlBtn = $("#save-url");
 
   // ---- Navigation ----
@@ -45,14 +47,21 @@
 
   // ---- API ----
   function apiUrl(path) {
-    return baseUrl.replace(/\/$/, "") + path;
+    // Empty baseUrl = same-origin (the PWA is served by the server itself).
+    return (baseUrl ? baseUrl.replace(/\/$/, "") : "") + path;
+  }
+
+  function authHeaders(extra) {
+    return Object.assign(
+      extra || {},
+      apiToken ? { Authorization: "Bearer " + apiToken } : {}
+    );
   }
 
   async function apiGet(path) {
-    if (!baseUrl) throw new Error("Server URL not set. Open Settings to configure.");
     const res = await fetch(apiUrl(path), {
       credentials: "include",
-      headers: { Accept: "application/json" },
+      headers: authHeaders({ Accept: "application/json" }),
     });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error("HTTP " + res.status + ": " + (await res.text()));
@@ -60,11 +69,10 @@
   }
 
   async function apiPost(path, body) {
-    if (!baseUrl) throw new Error("Server URL not set. Open Settings to configure.");
     const res = await fetch(apiUrl(path), {
       method: "POST",
       credentials: "include",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      headers: authHeaders({ "Content-Type": "application/json", Accept: "application/json" }),
       body: JSON.stringify(body),
     });
     if (!res.ok) {
@@ -83,7 +91,7 @@
     var language = languageSelect.value;
     var style = styleInput.value.trim();
 
-    if (!baseUrl) {
+    if (!baseUrl && !apiToken) {
       generateStatus.textContent = "Set the server URL in ⚙ Settings first.";
       return;
     }
@@ -256,8 +264,9 @@
     return parts;
   }
 
-  // ---- Settings: server URL (shared localStorage key with News Curator) ----
+  // ---- Settings: server URL + token (shared keys with the News Curator) ----
   serverUrlInput.value = baseUrl;
+  apiTokenInput.value = apiToken;
   saveUrlBtn.addEventListener("click", function () {
     var url = serverUrlInput.value.trim();
     if (url && !url.startsWith("http")) {
@@ -265,7 +274,9 @@
       serverUrlInput.value = url;
     }
     baseUrl = url.replace(/\/$/, "");
+    apiToken = apiTokenInput.value.trim();
     localStorage.setItem("agentcloud_base_url", baseUrl);
+    localStorage.setItem("agentcloud_token", apiToken);
     saveUrlBtn.textContent = "Saved!";
     setTimeout(function () { saveUrlBtn.textContent = "Save"; }, 1500);
   });
@@ -306,7 +317,7 @@
   }
 
   // ---- Init ----
-  if (!baseUrl) {
+  if (!baseUrl && !apiToken) {
     generateStatus.textContent = "Open ⚙ Settings to set your server URL first.";
   }
 })();
