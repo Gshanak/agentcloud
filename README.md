@@ -5,26 +5,39 @@ Two free AI apps on one self-hosted cloud backend:
 1. **News & Content Curator** - a daily AI-summarized news briefing, pushed to the phone.
 2. **Multilingual Storyteller** - illustrated, narrated stories in major Indian languages.
 
-Zero recurring cost: Oracle Cloud Always Free VM + Gemini free tier + Pollinations.ai
-images + browser speech synthesis + Web Push notifications.
+Zero recurring cost, zero card required: **Path A** runs everything on a
+free Hugging Face Space (state in a free private HF dataset repo, no card at
+all); **Path B** uses an Oracle Cloud Always Free VM + the full self-hosted
+AutoGPT platform (card needed for verification). Both paths use the Gemini
+free tier + Pollinations.ai images + browser speech synthesis + Web Push.
 
 ## Architecture
 
+Two deployment targets, one codebase — the AutoGen teams, dedup logic,
+briefing/story storage and both PWAs are shared:
+
 ```
-Oracle Cloud VM (Always Free, ARM 2 OCPU / 12 GB)
+Path A (no card) — Hugging Face Space (free CPU, 2 vCPU / 16 GB)
+  server/  standalone FastAPI app (this repo)
+    ├── /api/briefings, /api/stories, /api/push  (bearer token auth)
+    ├── AutoGen teams (news / story) -> Gemini free tier
+    ├── APScheduler: 07:00 IST news run
+    ├── state as JSON in a private HF dataset repo (survives restarts)
+    └── serves both PWAs at /news and /stories
+
+Path B (card for verification) — Oracle Cloud VM (Always Free, ARM 12 GB)
   └── AutoGPT Platform (Docker Compose, self-hosted)
         ├── REST API + WebSocket + Scheduler + Push notifications
         ├── Custom block: AutoGen bridge  (this repo)
         │     RoundRobinGroupChat of 3 AssistantAgents per pipeline
         │     model client -> Gemini OpenAI-compatible endpoint (free tier)
         └── Built-in blocks: RSS | HTTP | LLM | Postgres persistence
-Cloudflare Tunnel -> public HTTPS (free, no domain)
-Android PWA (vanilla JS + service worker) -> REST / Web Push
+  Cloudflare Tunnel -> public HTTPS (free, no domain)
 ```
 
-The apps are progressive web apps: installable to the home screen,
-offline-capable via a service worker, and push-notified via the platform's
-VAPID web-push endpoints. No Play Store fee, no native build toolchain.
+Both paths serve the same Android PWAs (vanilla JS + service worker):
+installable to the home screen, offline-capable, push-notified. No Play
+Store fee, no native build toolchain.
 
 Three open-source projects are combined:
 
@@ -55,21 +68,44 @@ graphs/
   storyteller.json         # importable agent graph: AgentInput -> AutoGen -> StoryStore
 deploy/
   customize.py             # applies the overlay onto a cloned AutoGPT repo
-  vm-setup.sh              # one-shot Ubuntu VM bootstrap
+  vm-setup.sh              # one-shot Ubuntu VM bootstrap (Path B)
   docker-compose.vm.yml    # memory limits sized for the 12 GB free VM
   schedule_news.py         # imports the graph + creates the 7 AM IST cron
-  CLOUDFLARE_TUNNEL.md     # free HTTPS exposure guide
-tests/                     # 83 pytest tests, network-free (replay model client)
+  CLOUDFLARE_TUNNEL.md     # free HTTPS exposure guide (Path B)
+  push_to_space.sh         # one command: push the server to a HF Space (Path A)
+server/                    # standalone no-card server (Path A)
+  app.py                   # FastAPI assembly + scheduler + static mounts
+  routes.py                # /api/briefings, /api/stories, /api/push, /health
+  store.py                 # KV store: HF dataset repo / Postgres / memory
+  news_job.py              # RSS -> dedup -> AutoGen team -> store -> push
+  push.py                  # web push, VAPID keys auto-generated
+  Dockerfile               # HF Spaces build (port 7860)
+tests/                     # 94 pytest tests, network-free (replay model client)
 apps/
   news-curator-pwa/       # installable PWA (Epic 3)
   storyteller-pwa/        # installable PWA with read-aloud (Epic 5)
-SETUP.md                  # the manual-input checklist (accounts, keys, VM)
+SETUP.md                  # both setup checklists (Path A: no card; Path B: VM)
 docs/Android_AI_Projects_Plan.pdf  # full end-to-end project plan
 ```
 
-## Deploying (Epics 1-2)
+## Deploying
 
-On a fresh Oracle Cloud Always Free ARM VM (Ubuntu):
+### Path A — no card (Hugging Face Space)
+
+Follow **SETUP.md → Path A**: create a Hugging Face account, a Space
+(Docker SDK), a private `agentcloud-state` dataset repo, set four secrets
+(`GEMINI_API_KEY`, `AUTH_TOKEN`, `HF_TOKEN`, `STATE_REPO`), then:
+
+```bash
+HF_USERNAME=you HF_TOKEN=hf_xxx bash deploy/push_to_space.sh
+```
+
+Minutes later the apps are at `https://<you>-agentcloud.hf.space/news/` and
+`/stories/`. Keep it awake with a free cron-job.org pinger on `/api/health`.
+
+### Path B — Oracle Cloud Always Free VM (card for verification)
+
+On a fresh ARM VM (Ubuntu):
 
 ```bash
 git clone https://github.com/Gshanak/agentcloud.git agentcloud
@@ -219,7 +255,7 @@ with speed control. No cloud TTS, no cost, works offline.
 
 ```bash
 pip install -r requirements-dev.txt
-python -m pytest tests/ -q        # 83 tests, no network needed
+python -m pytest tests/ -q        # 94 tests, no network needed
 ```
 
 Tests use AutoGen's `ReplayChatCompletionClient` for deterministic,
@@ -244,7 +280,7 @@ injected fakes for the routes.
 - [x] Epic 4 - Storyteller backend (story graph, /api/stories, Pollinations)
 - [x] Epic 5 - Storyteller PWA (browser speech synthesis narration)
 - [x] Epic 6 - Docs, delivery, final release
+- [x] Epic 7 - No-card deployment: standalone server on Hugging Face Spaces
 
 See `docs/Android_AI_Projects_Plan.pdf` for the original plan and
-**`SETUP.md` for the step-by-step setup checklist** (accounts, keys, VM
-creation — everything that needs your input).
+**`SETUP.md` for both setup checklists** — Path A needs no card at all.
