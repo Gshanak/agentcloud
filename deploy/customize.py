@@ -2,15 +2,17 @@
 """Apply the agentcloud overlay onto a cloned AutoGPT repository.
 
 Steps (idempotent - safe to re-run):
-  1. Copy the custom blocks (AutoGen bridge, news dedup, briefing store and
-     their pure helpers) into the platform's blocks directory (auto-discovered
-     by the platform's block loader).
-  2. Copy the /api/briefings feature into the platform's api/features tree.
-  3. Patch rest_api.py to mount the briefings router (import + include_router).
+  1. Copy the custom blocks (AutoGen bridge, news dedup, briefing store,
+     story store, and their pure helpers) into the platform's blocks
+     directory (auto-discovered by the platform's block loader).
+  2. Copy the /api/briefings and /api/stories features into the platform's
+     api/features tree.
+  3. Patch rest_api.py to mount both routers (import + include_router).
   4. Add autogen-agentchat / autogen-ext to the backend's poetry
      dependencies so the Docker build installs them.
   5. Create autogpt_platform/.env from .env.default, filling the required
-     GRAPHITI_FALKORDB_PASSWORD with a generated secret if unset.
+     GRAPHITI_FALKORDB_PASSWORD with a generated secret if unset, and
+     appending GEMINI_API_KEY= if missing (the user fills it in).
 
 Usage:
     python3 deploy/customize.py --repo /path/to/AutoGPT [--force-env]
@@ -33,9 +35,16 @@ BLOCK_FILES = (
     "_briefing_store.py",
     "news_dedup_block.py",
     "briefing_store_block.py",
+    "_story_store.py",
+    "story_store_block.py",
 )
-FEATURES_SRC = REPO_ROOT / "platform_overlay" / "backend" / "api" / "features" / "briefings"
-FEATURES_DST_REL = Path("autogpt_platform") / "backend" / "backend" / "api" / "features" / "briefings"
+
+# Features to copy: (overlay_subdir, destination_relative_to_repo)
+FEATURES_SRC_BASE = REPO_ROOT / "platform_overlay" / "backend" / "api" / "features"
+FEATURES = {
+    "briefings": Path("autogpt_platform") / "backend" / "backend" / "api" / "features" / "briefings",
+    "stories": Path("autogpt_platform") / "backend" / "backend" / "api" / "features" / "stories",
+}
 
 # Pinned AutoGen versions - keep in sync with requirements-dev.txt.
 AUTOGEN_DEPS = (
@@ -47,14 +56,16 @@ AUTOGEN_DEPS = (
 ROUTER_IMPORT_MARKER = (
     "from .features.integrations.router import router as integrations_router\n"
 )
-ROUTER_IMPORT_LINE = (
+ROUTER_IMPORT_LINES = (
     "from backend.api.features.briefings.routes import router as briefings_router\n"
+    "from backend.api.features.stories.routes import router as stories_router\n"
 )
 ROUTER_MOUNT_MARKER = (
     'app.include_router(backend.api.features.v1.v1_router, tags=["v1"], prefix="/api")\n'
 )
-ROUTER_MOUNT_LINE = (
+ROUTER_MOUNT_LINES = (
     'app.include_router(briefings_router, tags=["agentcloud"], prefix="/api/briefings")\n'
+    'app.include_router(stories_router, tags=["agentcloud"], prefix="/api/stories")\n'
 )
 
 
@@ -75,22 +86,26 @@ def copy_blocks(repo: Path) -> list[str]:
     return copied
 
 
-def copy_briefings_feature(repo: Path) -> list[str]:
-    """Copy the /api/briefings feature package into the platform tree."""
-    if not FEATURES_SRC.is_dir():
-        raise SystemExit(f"Overlay feature missing: {FEATURES_SRC}")
-    dest_dir = repo / FEATURES_DST_REL
-    if dest_dir.exists():
-        shutil.rmtree(dest_dir)
-    shutil.copytree(FEATURES_SRC, dest_dir)
-    return [
-        str((dest_dir / name).relative_to(repo))
-        for name in sorted(p.name for p in dest_dir.iterdir())
-    ]
+def copy_features(repo: Path) -> list[str]:
+    """Copy all feature packages into the platform tree."""
+    copied = []
+    for name, dst_rel in FEATURES.items():
+        src = FEATURES_SRC_BASE / name
+        if not src.is_dir():
+            raise SystemExit(f"Overlay feature missing: {src}")
+        dest_dir = repo / dst_rel
+        if dest_dir.exists():
+            shutil.rmtree(dest_dir)
+        shutil.copytree(src, dest_dir)
+        copied.extend(
+            str((dest_dir / f).relative_to(repo))
+            for f in sorted(p.name for p in dest_dir.iterdir())
+        )
+    return copied
 
 
 def patch_rest_api(repo: Path) -> bool:
-    """Mount the briefings router in rest_api.py (idempotent).
+    """Mount the briefings + stories routers in rest_api.py (idempotent).
 
     Returns True if the file changed.
     """
@@ -99,7 +114,7 @@ def patch_rest_api(repo: Path) -> bool:
     )
     text = rest_api.read_text(encoding="utf-8")
 
-    if "briefings_router" in text:
+    if "briefings_router" in text and "stories_router" in text:
         return False
 
     if ROUTER_IMPORT_MARKER not in text or ROUTER_MOUNT_MARKER not in text:
@@ -108,12 +123,36 @@ def patch_rest_api(repo: Path) -> bool:
             "(patch markers not found); update ROUTER_*_MARKER in customize.py"
         )
 
-    text = text.replace(
-        ROUTER_IMPORT_MARKER, ROUTER_IMPORT_MARKER + ROUTER_IMPORT_LINE, 1
-    )
-    text = text.replace(
-        ROUTER_MOUNT_MARKER, ROUTER_MOUNT_MARKER + ROUTER_MOUNT_LINE, 1
-    )
+    # Insert imports after the integrations import line (only if not present).
+    if "briefings_router" not in text:
+        text = text.replace(
+            ROUTER_IMPORT_MARKER, ROUTER_IMPORT_MARKER + ROUTER_IMPORT_LINES, 1
+        )
+    if "stories_router" not in text and "briefings_router" in text:
+        # Second run: briefings already there, just add stories import.
+        briefings_import = (
+            "from backend.api.features.briefings.routes import router as briefings_router\n"
+        )
+        text = text.replace(
+            briefings_import,
+            briefings_import + "from backend.api.features.stories.routes import router as stories_router\n",
+            1,
+        )
+
+    if "briefings_router" not in text or "app.include_router(briefings_router" not in text:
+        text = text.replace(
+            ROUTER_MOUNT_MARKER, ROUTER_MOUNT_MARKER + ROUTER_MOUNT_LINES, 1
+        )
+    elif "stories_router" not in text or "app.include_router(stories_router" not in text:
+        mount_briefings = (
+            'app.include_router(briefings_router, tags=["agentcloud"], prefix="/api/briefings")\n'
+        )
+        text = text.replace(
+            mount_briefings,
+            mount_briefings + 'app.include_router(stories_router, tags=["agentcloud"], prefix="/api/stories")\n',
+            1,
+        )
+
     rest_api.write_text(text, encoding="utf-8")
     return True
 
@@ -161,6 +200,13 @@ def write_env(repo: Path, force: bool = False) -> bool:
                 value = secrets.token_urlsafe(24)
             line = f"GRAPHITI_FALKORDB_PASSWORD={value}"
         lines.append(line)
+
+    # Append GEMINI_API_KEY if not already present (the user fills it in).
+    if not any(l.startswith("GEMINI_API_KEY=") for l in lines):
+        lines.append("")
+        lines.append("# agentcloud: set your Gemini API key for on-demand story generation")
+        lines.append("GEMINI_API_KEY=")
+
     env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return True
 
@@ -184,13 +230,13 @@ def main(argv: list[str] | None = None) -> int:
     for path in copied:
         print(f"  {path}")
 
-    feature_files = copy_briefings_feature(repo)
-    print("Copied briefings feature:")
+    feature_files = copy_features(repo)
+    print("Copied features:")
     for path in feature_files:
         print(f"  {path}")
 
     mounted = patch_rest_api(repo)
-    print(f"rest_api.py briefings router: {'mounted' if mounted else 'already mounted'}")
+    print(f"rest_api.py routers: {'mounted' if mounted else 'already mounted'}")
 
     changed = add_autogen_deps(repo)
     print(f"pyproject.toml autogen deps: {'added' if changed else 'already present'}")

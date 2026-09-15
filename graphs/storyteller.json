@@ -1,0 +1,106 @@
+{
+  "id": "22222222-aaaa-4bbb-8ccc-000000000002",
+  "version": 1,
+  "is_active": true,
+  "is_template": true,
+  "name": "Storyteller",
+  "description": "On-demand illustrated story: writes a short story in the requested language via a 3-agent AutoGen team (story_writer -> image_prompter -> story_editor) on the Gemini free tier, then stores it with a free Pollinations.ai cover illustration. Set your Gemini api_key on the AutoGen Bridge node after importing.",
+  "nodes": [
+    {
+      "id": "11111111-bbbb-4ccc-8ddd-000000000001",
+      "block_id": "c0a8e994-ebf1-4a9c-a4d8-89d09c86741b",
+      "input_default": {
+        "name": "topic",
+        "value": "a brave mongoose and a cobra",
+        "title": "Topic",
+        "description": "What the story should be about."
+      },
+      "metadata": { "position": { "x": 0, "y": 0 } }
+    },
+    {
+      "id": "11111111-bbbb-4ccc-8ddd-000000000002",
+      "block_id": "c0a8e994-ebf1-4a9c-a4d8-89d09c86741b",
+      "input_default": {
+        "name": "language",
+        "value": "English",
+        "title": "Language",
+        "description": "The language to write the story in."
+      },
+      "metadata": { "position": { "x": 0, "y": 160 } }
+    },
+    {
+      "id": "11111111-bbbb-4ccc-8ddd-000000000003",
+      "block_id": "8f2c1a54-9d7e-4b6a-a3f2-1c5e8b7d9a40",
+      "input_default": {
+        "task": "Write a complete short story (300-500 words) based on the topic given above. Write it entirely in the language specified in the context below. Give it a title on the first line.",
+        "team_profile": "story",
+        "api_key": "",
+        "model": "gemini-2.5-flash",
+        "max_messages": 12,
+        "retries": 3
+      },
+      "metadata": { "position": { "x": 320, "y": 80 } }
+    },
+    {
+      "id": "11111111-bbbb-4ccc-8ddd-000000000004",
+      "block_id": "c3a1f2b3-1111-4e2a-9c1d-000000000003",
+      "input_default": {
+        "language": "English",
+        "image_width": 768,
+        "image_height": 768,
+        "history_cap": 50
+      },
+      "metadata": { "position": { "x": 640, "y": 80 } }
+    }
+  ],
+  "links": [
+    {
+      "id": "44444444-bbbb-4ccc-8ddd-000000000101",
+      "source_id": "11111111-bbbb-4ccc-8ddd-000000000001",
+      "sink_id": "11111111-bbbb-4ccc-8ddd-000000000003",
+      "source_name": "result",
+      "sink_name": "task",
+      "is_static": false
+    },
+    {
+      "id": "44444444-bbbb-4ccc-8ddd-000000000102",
+      "source_id": "11111111-bbbb-4ccc-8ddd-000000000002",
+      "sink_id": "11111111-bbbb-4ccc-8ddd-000000000003",
+      "source_name": "result",
+      "sink_name": "context",
+      "is_static": false
+    },
+    {
+      "id": "44444444-bbbb-4ccc-8ddd-000000000103",
+      "source_id": "11111111-bbbb-4ccc-8ddd-000000000003",
+      "sink_id": "11111111-bbbb-4ccc-8ddd-000000000004",
+      "source_name": "result",
+      "sink_name": "story",
+      "is_static": false
+    },
+    {
+      "id": "44444444-bbbb-4ccc-8ddd-000000000104",
+      "source_id": "11111111-bbbb-4ccc-8ddd-000000000003",
+      "sink_id": "11111111-bbbb-4ccc-8ddd-000000000004",
+      "source_name": "transcript",
+      "sink_name": "transcript",
+      "is_static": false
+    },
+    {
+      "id": "44444444-bbbb-4ccc-8ddd-000000000105",
+      "source_id": "11111111-bbbb-4ccc-8ddd-000000000001",
+      "sink_id": "11111111-bbbb-4ccc-8ddd-000000000004",
+      "source_name": "result",
+      "sink_name": "topic",
+      "is_static": false
+    },
+    {
+      "id": "44444444-bbbb-4ccc-8ddd-000000000106",
+      "source_id": "11111111-bbbb-4ccc-8ddd-000000000002",
+      "sink_id": "11111111-bbbb-4ccc-8ddd-000000000004",
+      "source_name": "result",
+      "sink_name": "language",
+      "is_static": false
+    }
+  ]
+}

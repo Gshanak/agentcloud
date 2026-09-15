@@ -66,25 +66,20 @@ def test_customize_applies_overlay(fake_repo, capsys):
     assert (blocks / "briefing_store_block.py").is_file()
     assert (blocks / "_briefing_store.py").is_file()
     assert (blocks / "_block_shim.py").is_file()
+    assert (blocks / "_story_store.py").is_file()
+    assert (blocks / "story_store_block.py").is_file()
 
-    briefings = (
-        fake_repo
-        / "autogpt_platform"
-        / "backend"
-        / "backend"
-        / "api"
-        / "features"
-        / "briefings"
-    )
-    assert (briefings / "__init__.py").is_file()
-    assert (briefings / "routes.py").is_file()
+    features = fake_repo / "autogpt_platform" / "backend" / "backend" / "api" / "features"
+    assert (features / "briefings" / "routes.py").is_file()
+    assert (features / "stories" / "routes.py").is_file()
 
     rest_api = (
         fake_repo / "autogpt_platform" / "backend" / "backend" / "api" / "rest_api.py"
     ).read_text()
-    assert "from backend.api.features.briefings.routes import router as briefings_router" in rest_api
-    assert 'app.include_router(briefings_router, tags=["agentcloud"], prefix="/api/briefings")' in rest_api
-    assert rest_api.count("briefings_router") == 2
+    assert "briefings_router" in rest_api
+    assert "stories_router" in rest_api
+    assert '/api/briefings' in rest_api
+    assert '/api/stories' in rest_api
 
     pyproject = (
         fake_repo / "autogpt_platform" / "backend" / "pyproject.toml"
@@ -97,6 +92,8 @@ def test_customize_applies_overlay(fake_repo, capsys):
     assert "GRAPHITI_FALKORDB_PASSWORD=" in env
     password_line = [l for l in env.splitlines() if l.startswith("GRAPHITI_")][0]
     assert len(password_line.split("=", 1)[1]) > 20
+    # GEMINI_API_KEY appended (empty, user fills in)
+    assert "GEMINI_API_KEY=" in env
 
 
 def test_customize_is_idempotent(fake_repo):

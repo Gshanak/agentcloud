@@ -44,17 +44,22 @@ platform_overlay/backend/blocks/
   _briefing_store.py       # pure helpers: hashing, records, history, formatting
   news_dedup_block.py      # dedup by content hash BEFORE any LLM call
   briefing_store_block.py  # stores briefings in the platform KV store
+  _story_store.py        # pure helpers: story records, Pollinations URLs, image prompt extraction
+  story_store_block.py   # stores stories + cover URL in the platform KV store
 platform_overlay/backend/api/features/briefings/
   routes.py                # GET /api/briefings (latest) and /history
+platform_overlay/backend/api/features/stories/
+  routes.py                # POST /api/stories/generate, GET/DELETE /api/stories
 graphs/
   news_curator.json        # importable agent graph: RSS -> dedup -> AutoGen -> store
+  storyteller.json         # importable agent graph: AgentInput -> AutoGen -> StoryStore
 deploy/
   customize.py             # applies the overlay onto a cloned AutoGPT repo
   vm-setup.sh              # one-shot Ubuntu VM bootstrap
   docker-compose.vm.yml    # memory limits sized for the 12 GB free VM
   schedule_news.py         # imports the graph + creates the 7 AM IST cron
   CLOUDFLARE_TUNNEL.md     # free HTTPS exposure guide
-tests/                     # 52 pytest tests, network-free (replay model client)
+tests/                     # 75 pytest tests, network-free (replay model client)
 apps/
   news-curator-pwa/       # installable PWA (Epic 3)
 docs/Android_AI_Projects_Plan.pdf  # full end-to-end project plan
@@ -168,11 +173,42 @@ nginx service on port 8080) or from Cloudflare Pages (free). Open it in
 Chrome on Android, set the server URL in Settings, enable notifications,
 and install it to the home screen. See `apps/news-curator-pwa/DEPLOYMENT.md`.
 
+## The Storyteller pipeline (Epic 4)
+
+```
+AgentInput (topic, language)                     result
+  -> AutoGenBridgeBlock  result, transcript     (team_profile: story:
+     story_writer -> image_prompter -> story_editor)
+  -> StoryStoreBlock      stored
+     (extracts image_prompter's prompt from the transcript,
+      builds a free Pollinations.ai cover URL, stores in KV)
+```
+
+On-demand generation via REST (the primary path for the PWA):
+
+| Route | Description |
+|---|---|
+| `POST /api/stories/generate` | Start async story generation; returns `{id, status: "pending"}` (202) |
+| `GET /api/stories` | Story history, newest first (capped at 50) |
+| `GET /api/stories/{id}` | Single story record (poll until `status=ready`) |
+| `DELETE /api/stories/{id}` | Remove a story |
+
+The generate route runs the AutoGen story team as a background `asyncio`
+task, so the PWA gets an immediate 202 with a story ID and polls until
+`status` flips to `ready` or `failed`. The Gemini key is resolved from the
+request body or `GEMINI_API_KEY` in `.env` (set by `customize.py`).
+
+Cover illustrations are free: the image_prompter agent writes one English
+prompt, and `pollinations_image_url(prompt)` builds a deterministic URL
+that renders the image on demand — no API key, no storage cost. The PWA
+just puts the URL in an `<img>` tag; the browser and service worker cache
+it like any other static asset.
+
 ## Development
 
 ```bash
 pip install -r requirements-dev.txt
-python -m pytest tests/ -q        # 52 tests, no network needed
+python -m pytest tests/ -q        # 75 tests, no network needed
 ```
 
 Tests use AutoGen's `ReplayChatCompletionClient` for deterministic,
@@ -194,8 +230,8 @@ injected fakes for the routes.
 - [x] Epic 1 - Infrastructure: bridge block, tests, deployment kit
 - [x] Epic 2 - News Curator backend (graph, schedule, /api/briefings)
 - [x] Epic 3 - News Curator PWA (installable, offline, push notifications)
-- [ ] Epic 4 - Storyteller backend (story graph, Pollinations queue)
-- [ ] Epic 5 - Storyteller PWA (on-device speech synthesis for narration)
+- [x] Epic 4 - Storyteller backend (story graph, /api/stories, Pollinations)
+- [ ] Epic 5 - Storyteller PWA (browser speech synthesis for narration)
 - [ ] Epic 6 - Docs, delivery, final release
 
 See `docs/Android_AI_Projects_Plan.pdf` for the full plan.
