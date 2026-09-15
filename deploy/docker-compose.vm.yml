@@ -40,3 +40,16 @@ services:
     mem_limit: 256m
   redis-2:
     mem_limit: 256m
+
+  # News Curator PWA static server (http://<vm-ip>:8080).
+  # Build context: apps/news-curator-pwa (the Dockerfile copies the app + nginx.conf).
+  news-pwa:
+    image: nginx:alpine
+    mem_limit: 64m
+    ports:
+      - "8080:80"
+    volumes:
+      - ../apps/news-curator-pwa:/usr/share/nginx/html:ro
+      - ../apps/news-curator-pwa/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped
+    depends_on: []

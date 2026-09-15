@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f1117">
+  <meta name="description" content="Daily AI-summarized news briefing">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <link rel="stylesheet" href="style.css">
+  <title>News Curator</title>
+</head>
+<body>
+  <header class="topbar">
+    <h1>📰 News Curator</h1>
+    <button id="settings-btn" class="icon-btn" aria-label="Settings">⚙</button>
+  </header>
+
+  <main id="app">
+    <!-- Latest briefing -->
+    <section id="latest" class="view active">
+      <div id="briefing-content" class="briefing-card">
+        <div class="loading">Loading…</div>
+      </div>
+      <button id="refresh-btn" class="refresh-btn">↻ Refresh</button>
+    </section>
+
+    <!-- History list -->
+    <section id="history" class="view">
+      <h2>Past Briefings</h2>
+      <div id="history-list" class="history-list"></div>
+    </section>
+
+    <!-- Settings -->
+    <section id="settings" class="view">
+      <h2>Settings</h2>
+      <div class="settings-group">
+        <label for="server-url">Server URL</label>
+        <input type="url" id="server-url" placeholder="https://your-tunnel.trycloudflare.com" autocapitalize="off" autocorrect="off" spellcheck="false">
+        <button id="save-url" class="primary-btn">Save</button>
+      </div>
+      <div class="settings-group">
+        <label>Push Notifications</label>
+        <button id="push-sub-btn" class="primary-btn">Enable Notifications</button>
+        <p id="push-status" class="hint">Not subscribed</p>
+      </div>
+    </section>
+  </main>
+
+  <nav class="bottomnav">
+    <button class="nav-btn active" data-view="latest">📰 Today</button>
+    <button class="nav-btn" data-view="history">📜 History</button>
+    <button class="nav-btn" data-view="settings">⚙ Settings</button>
+  </nav>
+
+  <script src="app.js"></script>
+</body>
+</html>

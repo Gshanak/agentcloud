@@ -1,12 +1,12 @@
 # agentcloud
 
-Two free Android AI apps on one self-hosted cloud backend:
+Two free AI apps on one self-hosted cloud backend:
 
 1. **News & Content Curator** - a daily AI-summarized news briefing, pushed to the phone.
 2. **Multilingual Storyteller** - illustrated, narrated stories in major Indian languages.
 
 Zero recurring cost: Oracle Cloud Always Free VM + Gemini free tier + Pollinations.ai
-images + Android on-device TTS + Firebase Cloud Messaging.
+images + browser speech synthesis + Web Push notifications.
 
 ## Architecture
 
@@ -19,8 +19,12 @@ Oracle Cloud VM (Always Free, ARM 2 OCPU / 12 GB)
         │     model client -> Gemini OpenAI-compatible endpoint (free tier)
         └── Built-in blocks: RSS | HTTP | LLM | Postgres persistence
 Cloudflare Tunnel -> public HTTPS (free, no domain)
-Android apps (Kotlin + Compose) -> REST / WebSocket / FCM
+Android PWA (vanilla JS + service worker) -> REST / Web Push
 ```
+
+The apps are progressive web apps: installable to the home screen,
+offline-capable via a service worker, and push-notified via the platform's
+VAPID web-push endpoints. No Play Store fee, no native build toolchain.
 
 Three open-source projects are combined:
 
@@ -50,7 +54,9 @@ deploy/
   docker-compose.vm.yml    # memory limits sized for the 12 GB free VM
   schedule_news.py         # imports the graph + creates the 7 AM IST cron
   CLOUDFLARE_TUNNEL.md     # free HTTPS exposure guide
-tests/                     # 45 pytest tests, network-free (replay model client)
+tests/                     # 52 pytest tests, network-free (replay model client)
+apps/
+  news-curator-pwa/       # installable PWA (Epic 3)
 docs/Android_AI_Projects_Plan.pdf  # full end-to-end project plan
 ```
 
@@ -82,7 +88,7 @@ python3 deploy/schedule_news.py \
 
 4. Set your Gemini API key on the **AutoGen Bridge** node (or pass
    `--api-key` above), and the first scheduled run stores a briefing.
-5. The Android app reads `GET /api/briefings` (latest) and
+5. The PWA reads `GET /api/briefings` (latest) and
    `GET /api/briefings/history`.
 
 ### Manual steps (what vm-setup.sh does)
@@ -140,11 +146,33 @@ API (mounted by customize.py into the platform):
 | `GET /api/briefings` | Latest briefing record (404 until the first run) |
 | `GET /api/briefings/history` | Past briefings, newest first (capped at 30) |
 
+## The News Curator PWA (Epic 3)
+
+A progressive web app — installable to the home screen, offline-capable,
+and push-notified. No app store, no build toolchain: it is a set of static
+files in `apps/news-curator-pwa/`.
+
+```
+apps/news-curator-pwa/
+  index.html      # app shell: Today / History / Settings tabs
+  app.js          # fetches /api/briefings, push subscription, install prompt
+  sw.js           # service worker: shell cache + push event -> notification
+  style.css       # dark, mobile-first
+  manifest.json   # installable (standalone display, maskable icons)
+  nginx.conf      # serves from the VM via the news-pwa compose service
+  DEPLOYMENT.md   # VM (port 8080) or Cloudflare Pages options
+```
+
+Serve it from the same VM (the compose overlay includes a `news-pwa`
+nginx service on port 8080) or from Cloudflare Pages (free). Open it in
+Chrome on Android, set the server URL in Settings, enable notifications,
+and install it to the home screen. See `apps/news-curator-pwa/DEPLOYMENT.md`.
+
 ## Development
 
 ```bash
 pip install -r requirements-dev.txt
-python -m pytest tests/ -q        # 45 tests, no network needed
+python -m pytest tests/ -q        # 52 tests, no network needed
 ```
 
 Tests use AutoGen's `ReplayChatCompletionClient` for deterministic,
@@ -165,9 +193,9 @@ injected fakes for the routes.
 
 - [x] Epic 1 - Infrastructure: bridge block, tests, deployment kit
 - [x] Epic 2 - News Curator backend (graph, schedule, /api/briefings)
-- [ ] Epic 3 - News Curator Android app
+- [x] Epic 3 - News Curator PWA (installable, offline, push notifications)
 - [ ] Epic 4 - Storyteller backend (story graph, Pollinations queue)
-- [ ] Epic 5 - Storyteller Android app (on-device TTS)
-- [ ] Epic 6 - Docs, delivery, APK releases
+- [ ] Epic 5 - Storyteller PWA (on-device speech synthesis for narration)
+- [ ] Epic 6 - Docs, delivery, final release
 
 See `docs/Android_AI_Projects_Plan.pdf` for the full plan.
