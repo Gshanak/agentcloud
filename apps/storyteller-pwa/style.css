@@ -1,0 +1,137 @@
+/* Storyteller PWA — warm dark, mobile-first */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #120f17;
+  --card: #1e1a27;
+  --card-hover: #2a2435;
+  --text: #e4e0eb;
+  --text-dim: #8e8699;
+  --accent: #e8b45c;
+  --accent-hover: #d4a046;
+  --border: #2d2838;
+  --radius: 12px;
+  --max-width: 640px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ---- Top bar ---- */
+.topbar {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: calc(12px + var(--safe-top)) 16px 12px;
+  background: var(--bg); border-bottom: 1px solid var(--border);
+}
+.topbar h1 { font-size: 1.25rem; font-weight: 700; }
+.icon-btn {
+  background: none; border: none; font-size: 1.5rem; cursor: pointer;
+  color: var(--text-dim); padding: 8px; border-radius: 50%; min-width: 40px;
+}
+.icon-btn:active { background: var(--card-hover); }
+.hidden { display: none !important; }
+
+/* ---- Views ---- */
+#app { padding: 16px; padding-bottom: calc(80px + var(--safe-bottom)); max-width: var(--max-width); margin: 0 auto; }
+.view { display: none; }
+.view.active { display: block; }
+.view h2 { margin-bottom: 12px; font-size: 1.1rem; color: var(--text-dim); }
+
+/* ---- Cards ---- */
+.card { background: var(--card); border-radius: var(--radius); padding: 20px; border: 1px solid var(--border); }
+
+/* ---- Form ---- */
+.form-card { display: flex; flex-direction: column; gap: 12px; }
+.form-card label { font-size: 0.85rem; color: var(--text-dim); font-weight: 600; }
+.form-card input, .form-card select {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px 14px; color: var(--text); font-size: 0.95rem; outline: none; width: 100%;
+}
+.form-card input:focus, .form-card select:focus { border-color: var(--accent); }
+
+/* ---- Buttons ---- */
+.primary-btn {
+  background: var(--accent); border: none; color: #1a1320; padding: 14px;
+  border-radius: 8px; font-size: 0.95rem; font-weight: 700; cursor: pointer; width: 100%;
+}
+.primary-btn:active { background: var(--accent-hover); }
+.primary-btn:disabled { opacity: 0.5; }
+.hint { font-size: 0.8rem; color: var(--text-dim); }
+
+/* ---- Library list ---- */
+.story-list { display: flex; flex-direction: column; gap: 10px; }
+.story-item {
+  display: flex; gap: 12px; background: var(--card); border-radius: var(--radius);
+  padding: 10px; border: 1px solid var(--border); cursor: pointer; transition: background 0.15s;
+}
+.story-item:active { background: var(--card-hover); }
+.story-thumb { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+.story-meta { flex: 1; min-width: 0; }
+.story-meta h4 { font-size: 0.95rem; margin-bottom: 2px; }
+.story-meta .sub { font-size: 0.8rem; color: var(--text-dim); }
+.badge { background: var(--accent); color: #1a1320; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
+
+/* ---- Reader ---- */
+.story-card { background: var(--card); border-radius: var(--radius); padding: 24px 20px; border: 1px solid var(--border); }
+.cover { width: 100%; border-radius: var(--radius); margin-bottom: 16px; aspect-ratio: 1; object-fit: cover; }
+.story-card h2 { font-size: 1.4rem; color: var(--accent); margin-bottom: 8px; }
+.story-meta-row { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 20px; }
+.story-text {
+  white-space: pre-wrap; word-wrap: break-word; font-size: 1rem; line-height: 1.8;
+  margin-bottom: 24px; font-family: Georgia, "Times New Roman", serif;
+}
+
+/* ---- TTS controls ---- */
+.tts-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tts-btn {
+  background: var(--accent); border: none; color: #1a1320; padding: 10px 18px;
+  border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+}
+.tts-btn.subtle { background: var(--bg); color: var(--text-dim); border: 1px solid var(--border); }
+.rate-label { font-size: 0.8rem; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
+.rate-label input { width: 80px; }
+
+/* ---- Settings ---- */
+.settings-card { display: flex; flex-direction: column; gap: 10px; }
+.settings-card label { font-size: 0.85rem; color: var(--text-dim); font-weight: 600; }
+.settings-card input {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px 14px; color: var(--text); font-size: 0.95rem; outline: none;
+}
+
+/* ---- Bottom nav ---- */
+.bottomnav {
+  position: fixed; bottom: 0; left: 0; right: 0; display: flex;
+  background: var(--bg); border-top: 1px solid var(--border);
+  padding-bottom: var(--safe-bottom); z-index: 100;
+}
+.nav-btn {
+  flex: 1; background: none; border: none; color: var(--text-dim);
+  padding: 12px 4px; font-size: 0.75rem; cursor: pointer;
+}
+.nav-btn.active { color: var(--accent); }
+
+/* ---- Misc ---- */
+.loading { color: var(--text-dim); text-align: center; padding: 40px 0; }
+.error-msg { color: #ff6b6b; text-align: center; padding: 40px 0; }
+.install-banner {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  position: fixed; bottom: calc(64px + var(--safe-bottom)); left: 16px; right: 16px;
+  max-width: calc(var(--max-width) - 32px); margin: 0 auto;
+  background: var(--accent); color: #1a1320; padding: 12px 16px;
+  border-radius: var(--radius); font-size: 0.85rem; z-index: 200;
+}
+.install-banner button {
+  background: rgba(0,0,0,0.15); border: none; color: #1a1320;
+  padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.8rem;
+}

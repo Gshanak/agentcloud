@@ -59,9 +59,11 @@ deploy/
   docker-compose.vm.yml    # memory limits sized for the 12 GB free VM
   schedule_news.py         # imports the graph + creates the 7 AM IST cron
   CLOUDFLARE_TUNNEL.md     # free HTTPS exposure guide
-tests/                     # 75 pytest tests, network-free (replay model client)
+tests/                     # 83 pytest tests, network-free (replay model client)
 apps/
   news-curator-pwa/       # installable PWA (Epic 3)
+  storyteller-pwa/        # installable PWA with read-aloud (Epic 5)
+SETUP.md                  # the manual-input checklist (accounts, keys, VM)
 docs/Android_AI_Projects_Plan.pdf  # full end-to-end project plan
 ```
 
@@ -204,11 +206,20 @@ that renders the image on demand — no API key, no storage cost. The PWA
 just puts the URL in an `<img>` tag; the browser and service worker cache
 it like any other static asset.
 
+## The Storyteller PWA (Epic 5)
+
+Same pattern as the News Curator PWA, in `apps/storyteller-pwa/` (port
+8081): a Create tab (topic + language picker with 12 Indian languages +
+optional style), a Library of past stories with cover thumbnails, and an
+immersive Reader with the Pollinations cover, the story text, and **Read
+Aloud** — browser `speechSynthesis` narration in the story's language,
+with speed control. No cloud TTS, no cost, works offline.
+
 ## Development
 
 ```bash
 pip install -r requirements-dev.txt
-python -m pytest tests/ -q        # 75 tests, no network needed
+python -m pytest tests/ -q        # 83 tests, no network needed
 ```
 
 Tests use AutoGen's `ReplayChatCompletionClient` for deterministic,
@@ -231,7 +242,9 @@ injected fakes for the routes.
 - [x] Epic 2 - News Curator backend (graph, schedule, /api/briefings)
 - [x] Epic 3 - News Curator PWA (installable, offline, push notifications)
 - [x] Epic 4 - Storyteller backend (story graph, /api/stories, Pollinations)
-- [ ] Epic 5 - Storyteller PWA (browser speech synthesis for narration)
-- [ ] Epic 6 - Docs, delivery, final release
+- [x] Epic 5 - Storyteller PWA (browser speech synthesis narration)
+- [x] Epic 6 - Docs, delivery, final release
 
-See `docs/Android_AI_Projects_Plan.pdf` for the full plan.
+See `docs/Android_AI_Projects_Plan.pdf` for the original plan and
+**`SETUP.md` for the step-by-step setup checklist** (accounts, keys, VM
+creation — everything that needs your input).

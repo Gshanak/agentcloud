@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#120f17">
+  <meta name="description" content="Illustrated, narrated stories in Indian languages">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <link rel="stylesheet" href="style.css">
+  <title>Storyteller</title>
+</head>
+<body>
+  <header class="topbar">
+    <button id="back-btn" class="icon-btn hidden" aria-label="Back">←</button>
+    <h1>📚 Storyteller</h1>
+    <button id="settings-btn" class="icon-btn" aria-label="Settings">⚙</button>
+  </header>
+
+  <main id="app">
+    <!-- Create: the generation form -->
+    <section id="create" class="view active">
+      <h2>Create a Story</h2>
+      <div class="card form-card">
+        <label for="topic-input">What should the story be about?</label>
+        <input type="text" id="topic-input" placeholder="e.g. a brave mongoose and a cobra" maxlength="500" autocapitalize="sentences">
+
+        <label for="language-select">Language</label>
+        <select id="language-select">
+          <option value="English" data-lang-code="en-IN" selected>English</option>
+          <option value="Hindi" data-lang-code="hi-IN">हिन्दी (Hindi)</option>
+          <option value="Telugu" data-lang-code="te-IN">తెలుగు (Telugu)</option>
+          <option value="Tamil" data-lang-code="ta-IN">தமிழ் (Tamil)</option>
+          <option value="Bengali" data-lang-code="bn-IN">বাংলা (Bengali)</option>
+          <option value="Marathi" data-lang-code="mr-IN">मराठी (Marathi)</option>
+          <option value="Gujarati" data-lang-code="gu-IN">ગુજરાતી (Gujarati)</option>
+          <option value="Kannada" data-lang-code="kn-IN">ಕನ್ನಡ (Kannada)</option>
+          <option value="Malayalam" data-lang-code="ml-IN">മലയാളം (Malayalam)</option>
+          <option value="Punjabi" data-lang-code="pa-IN">ਪੰਜਾਬੀ (Punjabi)</option>
+          <option value="Odia" data-lang-code="or-IN">ଓଡ଼ିଆ (Odia)</option>
+          <option value="Assamese" data-lang-code="as-IN">অসমীয়া (Assamese)</option>
+          <option value="Urdu" data-lang-code="ur-IN">اردو (Urdu)</option>
+        </select>
+
+        <label for="style-input">Style (optional)</label>
+        <input type="text" id="style-input" placeholder="e.g. bedtime fable, funny, adventurous" maxlength="200">
+
+        <button id="generate-btn" class="primary-btn">✨ Generate Story</button>
+        <p id="generate-status" class="hint"></p>
+      </div>
+    </section>
+
+    <!-- Library: the story list -->
+    <section id="library" class="view">
+      <h2>My Stories</h2>
+      <div id="story-list" class="story-list"></div>
+    </section>
+
+    <!-- Reader: a single story -->
+    <section id="reader" class="view">
+      <div id="reader-content"></div>
+    </section>
+
+    <!-- Settings -->
+    <section id="settings" class="view">
+      <h2>Settings</h2>
+      <div class="card settings-card">
+        <label for="server-url">Server URL</label>
+        <input type="url" id="server-url" placeholder="https://your-tunnel.trycloudflare.com" autocapitalize="off" autocorrect="off" spellcheck="false">
+        <button id="save-url" class="primary-btn">Save</button>
+      </div>
+    </section>
+  </main>
+
+  <nav class="bottomnav">
+    <button class="nav-btn active" data-view="create">✨ Create</button>
+    <button class="nav-btn" data-view="library">📚 Library</button>
+    <button class="nav-btn" data-view="settings">⚙ Settings</button>
+  </nav>
+
+  <script src="app.js"></script>
+</body>
+</html>
